@@ -1,8 +1,21 @@
+use strata::{Engine, Game, Renderer};
+
+struct EditorGame;
+
+impl Game for EditorGame {
+    fn update(&mut self, _dt: f64) {
+        // Editor game logic
+    }
+
+    fn render(&mut self, _renderer: &mut Renderer) {
+        // Editor rendering
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     println!("Strata Editor - Coming soon!");
 
-    // For now, just run the engine like the example
-    let engine = strata::Engine::new()?;
-    engine.run()?;
+    let engine = Engine::new()?;
+    engine.run(EditorGame)?;
     Ok(())
 }
