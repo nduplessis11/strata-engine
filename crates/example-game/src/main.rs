@@ -1,5 +1,32 @@
+use strata::{Engine, Game, Renderer};
+
+struct ExampleGame {
+    frame_count: u64,
+}
+
+impl ExampleGame {
+    fn new() -> Self {
+        Self { frame_count: 0 }
+    }
+}
+
+impl Game for ExampleGame {
+    fn update(&mut self, dt: f64) {
+        self.frame_count += 1;
+
+        if self.frame_count % 60 == 0 {
+            println!("Frame {}, dt: {:.3}ms", self.frame_count, dt * 1000.0);
+        }
+    }
+
+    fn render(&mut self, _renderer: &mut Renderer) {
+        // TODO: will draw a triangle
+    }
+}
+
 fn main() -> anyhow::Result<()> {
-    let engine = strata::Engine::new()?;
-    engine.run()?;
+    let engine = Engine::new()?;
+    let game = ExampleGame::new();
+    engine.run(game)?;
     Ok(())
 }
