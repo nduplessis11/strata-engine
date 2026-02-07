@@ -1,0 +1,70 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+    
+        {
+            "name": "Debug unit tests in library 'strata'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--package=strata"
+                ]
+            }
+        },
+        {
+            "name": "Debug executable 'editor'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=editor",
+                    "--package=editor"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in executable 'editor'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--bin=editor",
+                    "--package=editor"
+                ]
+            }
+        },
+        {
+            "name": "Debug executable 'example-game'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "run",
+                    "--bin=example-game",
+                    "--package=example-game"
+                ]
+            },
+            "args": []
+        },
+        {
+            "name": "Debug unit tests in executable 'example-game'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--bin=example-game",
+                    "--package=example-game"
+                ]
+            }
+        }
+    ]
+}
