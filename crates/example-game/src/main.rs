@@ -11,6 +11,10 @@ impl ExampleGame {
 }
 
 impl Game for ExampleGame {
+    fn name(&self) -> &str {
+        "Example Game"
+    }
+
     fn update(&mut self, dt: f64) {
         self.frame_count += 1;
 

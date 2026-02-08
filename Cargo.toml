@@ -9,7 +9,7 @@ members = [
 [workspace.dependencies]
 # Shared dependencies across all crates
 winit = "0.30"
-ash = "0.38"
+ash = { version = "0.38", features = ["linked"] }
 ash-window = "0.13"
 anyhow = "1.0"
 thiserror = "2.0"

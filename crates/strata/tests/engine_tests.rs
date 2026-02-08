@@ -24,6 +24,9 @@ fn test_engine_has_window_manager() {
 struct DummyGame;
 
 impl Game for DummyGame {
+    fn name(&self) -> &str {
+        "Dummy Game"
+    }
     fn update(&mut self, _dt: f64) {}
     fn render(&mut self, _renderer: &mut Renderer) {}
 }
