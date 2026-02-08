@@ -2,8 +2,8 @@
 
 use std::ffi::CString;
 
-use ash::{Entry, Instance, vk};
-use winit::raw_window_handle::RawDisplayHandle;
+use ash::{Entry, Instance, khr, vk};
+use winit::raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 
 use crate::{Result, StrataError};
 
@@ -20,18 +20,25 @@ impl Renderer {
     /// Returns `StrataError::RendererInit` if Vulkan initialization fails
     pub fn new(
         display_handle: RawDisplayHandle,
+        window_handle: RawWindowHandle,
         app_name: &str,
     ) -> Result<Self> {
         Ok(Self {
-            _context: VulkanContext::new(display_handle, app_name)?,
+            _context: VulkanContext::new(
+                display_handle,
+                window_handle,
+                app_name,
+            )?,
         })
     }
 }
 
 /// Contains core Vulkan state information known only by Renderer
 struct VulkanContext {
-    _entry: Entry,
+    surface: vk::SurfaceKHR,
+    surface_loader: khr::surface::Instance,
     _instance: Instance,
+    _entry: Entry,
 }
 
 impl VulkanContext {
@@ -42,6 +49,7 @@ impl VulkanContext {
     /// Returns `StrataError::RendererInit` if Vulkan initialization fails
     pub fn new(
         display_handle: RawDisplayHandle,
+        window_handle: RawWindowHandle,
         app_name: &str,
     ) -> Result<Self> {
         let extensions = ash_window::enumerate_required_extensions(
@@ -86,6 +94,38 @@ impl VulkanContext {
                 })?
         };
 
-        Ok(Self { _entry: entry, _instance: instance })
+        let surface_loader = khr::surface::Instance::new(&entry, &instance);
+
+        let surface = unsafe {
+            ash_window::create_surface(
+                &entry,
+                &instance,
+                display_handle,
+                window_handle,
+                None,
+            )
+            .map_err(|e| {
+                StrataError::RendererInit(format!(
+                    "Failed to create Vulkan surface {}",
+                    e
+                ))
+            })?
+        };
+
+        Ok(Self {
+            surface_loader,
+            surface,
+            _instance: instance,
+            _entry: entry,
+        })
+    }
+}
+
+impl Drop for VulkanContext {
+    fn drop(&mut self) {
+        unsafe {
+            self.surface_loader
+                .destroy_surface(self.surface, None);
+        }
     }
 }
