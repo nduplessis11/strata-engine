@@ -16,6 +16,7 @@ use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::raw_window_handle::HasDisplayHandle;
 use winit::window::WindowId;
 
 /// Trait that games implement to define their logic.
@@ -31,6 +32,8 @@ use winit::window::WindowId;
 /// struct MyGame;
 ///
 /// impl Game for MyGame {
+///     fn name(&self) -> &str { "Game Name" }
+///
 ///     fn update(&mut self, dt: f64) {
 ///         // Game logic here
 ///     }
@@ -41,6 +44,9 @@ use winit::window::WindowId;
 /// }
 /// ```
 pub trait Game {
+    /// Gets the name/identity of the game
+    fn name(&self) -> &str;
+
     /// Called every frame with delta time in seconds
     fn update(&mut self, dt: f64);
 
@@ -78,6 +84,7 @@ impl Engine {
     ///
     /// struct MyGame;
     /// impl Game for MyGame {
+    ///     fn name(&self) -> &str { "Dummy Game" }
     ///     fn update(&mut self, _dt: f64) {}
     ///     fn render(&mut self, _renderer: &mut Renderer) {}
     /// }
@@ -115,7 +122,7 @@ struct EngineApp<G: Game> {
 
 impl<G: Game> ApplicationHandler for EngineApp<G> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // Create the window
+        // Step 1: Create window
         if let Err(e) = self
             .window_manager
             .create_window(event_loop)
@@ -125,7 +132,31 @@ impl<G: Game> ApplicationHandler for EngineApp<G> {
             return;
         }
 
-        // TODO: Initialize renderer here
+        // Step 2: Get display handle
+        let display_handle = match event_loop.display_handle() {
+            Ok(handle) => handle,
+            Err(e) => {
+                eprintln!("Failed to get display handle: {}", e);
+                event_loop.exit();
+                return;
+            }
+        };
+
+        // Step 3: Create Vulkan Instance (uses display handle)
+        let renderer =
+            match Renderer::new(display_handle.as_raw(), self.game.name()) {
+                Ok(renderer) => {
+                    println!("✓ Vulkan renderer initialized successfully!");
+                    renderer
+                }
+                Err(e) => {
+                    eprintln!("Failed to create renderer: {}", e);
+                    event_loop.exit();
+                    return;
+                }
+            };
+
+        self.renderer = Some(renderer);
 
         // Request initial redraw
         if let Some(window) = self.window_manager.window() {
