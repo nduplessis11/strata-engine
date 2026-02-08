@@ -155,7 +155,7 @@ impl<G: Game> ApplicationHandler for EngineApp<G> {
                 self.game.update(dt);
 
                 // Call game render (once we have a renderer)
-                if let Some(ref mut renderer) = self.renderer {
+                if let Some(renderer) = &mut self.renderer {
                     self.game.render(renderer);
                 }
 
