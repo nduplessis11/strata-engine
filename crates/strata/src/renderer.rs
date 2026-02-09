@@ -15,9 +15,15 @@ pub struct Renderer {
 impl Renderer {
     /// Create a new Vulkan renderer
     ///
+    /// # Arguments
+    ///
+    /// * `display_handle` - The raw display handle provided by the windowing system.
+    /// * `window_handle` - The raw window handle used to create the Vulkan surface.
+    /// * `app_name` - The application name passed to Vulkan for instance identification.
+    ///
     /// # Errors
     ///
-    /// Returns `StrataError::RendererInit` if Vulkan initialization fails
+    /// Returns [`StrataError::RendererInit`] if Vulkan initialization fails
     pub fn new(
         display_handle: RawDisplayHandle,
         window_handle: RawWindowHandle,
@@ -106,7 +112,7 @@ impl VulkanContext {
             )
             .map_err(|e| {
                 StrataError::RendererInit(format!(
-                    "Failed to create Vulkan surface {}",
+                    "Failed to create Vulkan surface: {}",
                     e
                 ))
             })?
