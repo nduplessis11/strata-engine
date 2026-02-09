@@ -3,6 +3,10 @@ use strata::{Engine, Game, Renderer};
 struct EditorGame;
 
 impl Game for EditorGame {
+    fn name(&self) -> &str {
+        "Editor"
+    }
+
     fn update(&mut self, _dt: f64) {
         // Editor game logic
     }

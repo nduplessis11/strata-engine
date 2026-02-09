@@ -16,7 +16,7 @@ use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
-use winit::raw_window_handle::HasDisplayHandle;
+use winit::raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use winit::window::WindowId;
 
 /// Trait that games implement to define their logic.
@@ -132,7 +132,7 @@ impl<G: Game> ApplicationHandler for EngineApp<G> {
             return;
         }
 
-        // Step 2: Get display handle
+        // Step 2: Get display and window handle
         let display_handle = match event_loop.display_handle() {
             Ok(handle) => handle,
             Err(e) => {
@@ -141,20 +141,39 @@ impl<G: Game> ApplicationHandler for EngineApp<G> {
                 return;
             }
         };
+        let window = match self.window_manager.window() {
+            Some(w) => w,
+            None => {
+                eprintln!("Window was not created!");
+                event_loop.exit();
+                return;
+            }
+        };
+        let window_handle = match window.window_handle() {
+            Ok(handle) => handle,
+            Err(e) => {
+                eprintln!("Failed to get window handle: {}", e);
+                event_loop.exit();
+                return;
+            }
+        };
 
         // Step 3: Create Vulkan Instance (uses display handle)
-        let renderer =
-            match Renderer::new(display_handle.as_raw(), self.game.name()) {
-                Ok(renderer) => {
-                    println!("✓ Vulkan renderer initialized successfully!");
-                    renderer
-                }
-                Err(e) => {
-                    eprintln!("Failed to create renderer: {}", e);
-                    event_loop.exit();
-                    return;
-                }
-            };
+        let renderer = match Renderer::new(
+            display_handle.as_raw(),
+            window_handle.as_raw(),
+            self.game.name(),
+        ) {
+            Ok(renderer) => {
+                println!("✓ Vulkan renderer initialized successfully!");
+                renderer
+            }
+            Err(e) => {
+                eprintln!("Failed to create renderer: {}", e);
+                event_loop.exit();
+                return;
+            }
+        };
 
         self.renderer = Some(renderer);
 
