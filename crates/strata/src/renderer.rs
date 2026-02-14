@@ -83,8 +83,34 @@ impl VulkanContext {
             ..Default::default()
         };
 
+        let layers = unsafe { entry.enumerate_instance_layer_properties()? };
+        let has_validation = layers.iter().any(|layer| {
+            layer
+                .layer_name_as_c_str()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                == "VK_LAYER_KHRONOS_validation"
+        });
+
+        let layer_name_cstr: CString;
+        let layer_names: [*const i8; 1];
+
+        let (layer_count, layer_names_ptr) =
+            if cfg!(debug_assertions) && has_validation {
+                println!("✓ Enabling Vulkan validation layer");
+                layer_name_cstr = CString::new("VK_LAYER_KHRONOS_validation")
+                    .expect("Layer name must not contain null bytes");
+                layer_names = [layer_name_cstr.as_ptr()];
+                (1, layer_names.as_ptr())
+            } else {
+                (0, std::ptr::null())
+            };
+
         let create_info = vk::InstanceCreateInfo {
             p_application_info: &app_info,
+            enabled_layer_count: layer_count,
+            pp_enabled_layer_names: layer_names_ptr,
             enabled_extension_count: extensions.len() as u32,
             pp_enabled_extension_names: extensions.as_ptr(),
             ..Default::default()

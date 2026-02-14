@@ -1,5 +1,7 @@
 use strata::{Engine, Game, Renderer};
 
+const PRINT_FRAMES: bool = false;
+
 struct ExampleGame {
     frame_count: u64,
 }
@@ -18,7 +20,7 @@ impl Game for ExampleGame {
     fn update(&mut self, dt: f64) {
         self.frame_count += 1;
 
-        if self.frame_count % 60 == 0 {
+        if PRINT_FRAMES && self.frame_count % 60 == 0 {
             println!("Frame {}, dt: {:.3}ms", self.frame_count, dt * 1000.0);
         }
     }
