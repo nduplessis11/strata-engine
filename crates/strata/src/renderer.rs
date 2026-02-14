@@ -1,8 +1,8 @@
 //! Vulkan renderer
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 
-use ash::{Entry, Instance, khr, vk};
+use ash::{Entry, Instance, ext, khr, vk};
 use winit::raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 
 use crate::{Result, StrataError};
@@ -41,6 +41,8 @@ impl Renderer {
 
 /// Contains core Vulkan state information known only by Renderer
 struct VulkanContext {
+    debug_messenger: Option<vk::DebugUtilsMessengerEXT>,
+    debug_utils_loader: Option<ext::debug_utils::Instance>,
     surface: vk::SurfaceKHR,
     surface_loader: khr::surface::Instance,
     _instance: Instance,
@@ -49,6 +51,9 @@ struct VulkanContext {
 
 impl VulkanContext {
     /// Create a new VulkanContext and initialize Vulkan.
+    ///
+    /// In debug builds, automatically enables Vulkan validation layers
+    /// and sets up a debug messenger for error reporting.
     ///
     /// # Errors
     ///
@@ -68,6 +73,15 @@ impl VulkanContext {
             ))
         })?;
 
+        let mut extension_names_vec: Vec<*const i8>;
+        let extensions_slice = if cfg!(debug_assertions) {
+            extension_names_vec = extensions.to_vec();
+            extension_names_vec.push(vk::EXT_DEBUG_UTILS_NAME.as_ptr());
+            extension_names_vec.as_slice()
+        } else {
+            extensions
+        };
+
         let entry = Entry::linked();
 
         let app_name_cstr = CString::new(app_name)
@@ -83,10 +97,36 @@ impl VulkanContext {
             ..Default::default()
         };
 
+        let layers = unsafe { entry.enumerate_instance_layer_properties()? };
+        let has_validation = layers.iter().any(|layer| {
+            layer
+                .layer_name_as_c_str()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                == "VK_LAYER_KHRONOS_validation"
+        });
+
+        let layer_name_cstr: CString;
+        let layer_names: [*const i8; 1];
+
+        let (layer_count, layer_names_ptr) =
+            if cfg!(debug_assertions) && has_validation {
+                println!("✓ Enabling Vulkan validation layer");
+                layer_name_cstr = CString::new("VK_LAYER_KHRONOS_validation")
+                    .expect("Layer name must not contain null bytes");
+                layer_names = [layer_name_cstr.as_ptr()];
+                (1, layer_names.as_ptr())
+            } else {
+                (0, std::ptr::null())
+            };
+
         let create_info = vk::InstanceCreateInfo {
             p_application_info: &app_info,
-            enabled_extension_count: extensions.len() as u32,
-            pp_enabled_extension_names: extensions.as_ptr(),
+            enabled_layer_count: layer_count,
+            pp_enabled_layer_names: layer_names_ptr,
+            enabled_extension_count: extensions_slice.len() as u32,
+            pp_enabled_extension_names: extensions_slice.as_ptr(),
             ..Default::default()
         };
         let instance = unsafe {
@@ -98,6 +138,30 @@ impl VulkanContext {
                         e
                     ))
                 })?
+        };
+
+        let (debug_utils_loader, debug_messenger) = if cfg!(debug_assertions)
+            && has_validation
+        {
+            let loader = ext::debug_utils::Instance::new(&entry, &instance);
+
+            let messenger_info = vk::DebugUtilsMessengerCreateInfoEXT {
+                message_severity: vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
+                    | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING,
+                message_type: vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
+                    | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
+                    | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
+                pfn_user_callback: Some(debug_callback),
+                ..Default::default()
+            };
+
+            let messenger = unsafe {
+                loader.create_debug_utils_messenger(&messenger_info, None)?
+            };
+
+            (Some(loader), Some(messenger))
+        } else {
+            (None, None)
         };
 
         let surface_loader = khr::surface::Instance::new(&entry, &instance);
@@ -119,6 +183,8 @@ impl VulkanContext {
         };
 
         Ok(Self {
+            debug_messenger,
+            debug_utils_loader,
             surface_loader,
             surface,
             _instance: instance,
@@ -132,6 +198,39 @@ impl Drop for VulkanContext {
         unsafe {
             self.surface_loader
                 .destroy_surface(self.surface, None);
+
+            if let Some(messenger) = self.debug_messenger {
+                if let Some(loader) = &self.debug_utils_loader {
+                    loader.destroy_debug_utils_messenger(messenger, None);
+                }
+            }
         }
+    }
+}
+
+unsafe extern "system" fn debug_callback(
+    message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
+    _message_type: vk::DebugUtilsMessageTypeFlagsEXT,
+    p_callback_data: *const vk::DebugUtilsMessengerCallbackDataEXT,
+    _p_user_data: *mut std::ffi::c_void,
+) -> vk::Bool32 {
+    unsafe {
+        let callback_data = &*p_callback_data;
+        let message = CStr::from_ptr(callback_data.p_message);
+
+        let severity = if message_severity
+            .contains(vk::DebugUtilsMessageSeverityFlagsEXT::ERROR)
+        {
+            "ERROR"
+        } else if message_severity
+            .contains(vk::DebugUtilsMessageSeverityFlagsEXT::WARNING)
+        {
+            "WARNING"
+        } else {
+            "INFO"
+        };
+
+        eprintln!("[VULKAN {}] {:?}", severity, message);
+        vk::FALSE
     }
 }
