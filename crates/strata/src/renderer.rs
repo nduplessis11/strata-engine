@@ -216,13 +216,15 @@ impl VulkanContext {
     }
 
     fn select_physical_device(
-        _instance: &Instance,
+        instance: &Instance,
         _surface_loader: &khr::surface::Instance,
         _surface: vk::SurfaceKHR,
     ) -> Result<SelectedDevice> {
-        // Stub implementation - return dummy values
+        let devices = unsafe { instance.enumerate_physical_devices()? };
+        println!("Found {} physical devices", devices.len());
+
         Ok(SelectedDevice {
-            physical_device: vk::PhysicalDevice::null(),
+            physical_device: devices[0],
             graphics_queue_family: 0,
         })
     }
