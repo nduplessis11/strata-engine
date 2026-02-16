@@ -1,11 +1,13 @@
 //! Vulkan renderer
 
-use std::ffi::{CStr, CString};
-
+use crate::{Result, StrataError};
 use ash::{Entry, Instance, ext, khr, vk};
+use std::ffi::{CStr, CString};
 use winit::raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 
-use crate::{Result, StrataError};
+// ========================================
+// PUBLIC API
+// ========================================
 
 /// Manages Vulkan rendering state and draw calls
 pub struct Renderer {
@@ -39,8 +41,20 @@ impl Renderer {
     }
 }
 
+// ========================================
+// INTERNAL IMPLEMENTATION
+// ========================================
+
+/// Contains Vulkan state about selected physical device
+struct SelectedDevice {
+    physical_device: vk::PhysicalDevice,
+    graphics_queue_family: u32,
+}
+
 /// Contains core Vulkan state information known only by Renderer
 struct VulkanContext {
+    _physical_device: vk::PhysicalDevice,
+    _graphics_queue_family: u32,
     debug_messenger: Option<vk::DebugUtilsMessengerEXT>,
     debug_utils_loader: Option<ext::debug_utils::Instance>,
     surface: vk::SurfaceKHR,
@@ -182,13 +196,34 @@ impl VulkanContext {
             })?
         };
 
+        let SelectedDevice { physical_device, graphics_queue_family } =
+            Self::select_physical_device(&instance, &surface_loader, surface)?;
+
+        // TODO: Temporary debug print
+        println!("Selected physical device: {:?}", physical_device);
+        println!("Selected queue family: {}", graphics_queue_family);
+
         Ok(Self {
+            _physical_device: physical_device,
+            _graphics_queue_family: graphics_queue_family,
             debug_messenger,
             debug_utils_loader,
             surface_loader,
             surface,
             _instance: instance,
             _entry: entry,
+        })
+    }
+
+    fn select_physical_device(
+        _instance: &Instance,
+        _surface_loader: &khr::surface::Instance,
+        _surface: vk::SurfaceKHR,
+    ) -> Result<SelectedDevice> {
+        // Stub implementation - return dummy values
+        Ok(SelectedDevice {
+            physical_device: vk::PhysicalDevice::null(),
+            graphics_queue_family: 0,
         })
     }
 }
@@ -207,6 +242,10 @@ impl Drop for VulkanContext {
         }
     }
 }
+
+// ========================================
+// HELPER FUNCTIONS
+// ========================================
 
 unsafe extern "system" fn debug_callback(
     message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,

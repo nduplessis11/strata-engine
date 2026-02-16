@@ -16,6 +16,9 @@ pub enum StrataError {
     /// A Vulkan API error occured
     #[error("Vulkan error: {0}")]
     Vulkan(#[from] ash::vk::Result),
+
+    #[error("No GPU device found that supports: {0}")]
+    NoSuitableDevice(String),
 }
 
 /// Convenience type alias for Results using StrataError
