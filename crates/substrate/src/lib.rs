@@ -1,4 +1,5 @@
 pub mod arena;
+pub mod frame_arena;
 
 pub struct DrawCommand {
     _mesh_id: u64,

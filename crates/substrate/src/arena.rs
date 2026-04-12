@@ -1,4 +1,15 @@
-//! arena.rs
+//! Bump allocator that hands out raw `NonNull<T>` pointers.
+//!
+//! # Why `NonNull<T>` and not `&mut T`
+//! A `&mut T` reference asserts Rust's exclusive-reference guarantee for its
+//! lifetime. This arena cannot uphold that: calling [`Arena::reset`] invalidates
+//! every previously-returned pointer immediately, with no lifetime to enforce it.
+//! Returning `NonNull<T>` makes the unsafe contract explicit — the caller must
+//! manage pointer validity and dereference inside `unsafe`.
+//!
+//! A pointer returned by [`Arena::alloc`] or [`Arena::alloc_uninit`] is valid
+//! only until the next call to [`Arena::reset`]. For frame-scoped allocations,
+//! prefer [`crate::frame_arena::FrameArena`].
 
 use std::alloc::Layout;
 use std::ptr::NonNull;
@@ -11,6 +22,14 @@ pub struct Arena {
 #[derive(Debug)]
 pub enum ArenaError {
     OutOfMemory,
+}
+
+/// Rounds `addr` up to the nearest multiple of `align`.
+/// `align` must be a non-zero power of two (guaranteed by `std::alloc::Layout`).
+/// Returns `None` on arithmetic overflow.
+pub(crate) fn align_up(addr: usize, align: usize) -> Option<usize> {
+    let bumped = addr.checked_add(align - 1)?;
+    Some(bumped & !(align - 1))
 }
 
 impl Arena {
@@ -33,26 +52,46 @@ impl Arena {
     ) -> Result<NonNull<u8>, ArenaError> {
         let base = self.buf.as_ptr() as usize;
         let current = base + self.offset;
-        let next = (current + layout.align() - 1) & !(layout.align() - 1);
 
-        let new_offset = next - base + layout.size();
+        let aligned =
+            align_up(current, layout.align()).ok_or(ArenaError::OutOfMemory)?;
+        let new_offset = aligned
+            .checked_sub(base)
+            .and_then(|o| o.checked_add(layout.size()))
+            .ok_or(ArenaError::OutOfMemory)?;
+
         if new_offset > self.capacity() {
             return Err(ArenaError::OutOfMemory);
         }
         self.offset = new_offset;
-
-        NonNull::new(next as *mut u8).ok_or(ArenaError::OutOfMemory)
+        NonNull::new(aligned as *mut u8).ok_or(ArenaError::OutOfMemory)
     }
 
     pub fn reset(&mut self) {
         self.offset = 0;
     }
 
-    pub fn alloc<T: Copy>(&mut self, value: T) -> Result<&mut T, ArenaError> {
+    /// Allocates space for `T`, writes `value`, and returns a `NonNull<T>`.
+    ///
+    /// # Safety
+    /// The returned pointer is valid only until the next call to [`Arena::reset`].
+    /// Dereferencing after `reset()` is undefined behaviour.
+    pub fn alloc<T>(&mut self, value: T) -> Result<NonNull<T>, ArenaError> {
         let layout = Layout::new::<T>();
         let ptr = self.alloc_layout(layout)?.as_ptr() as *mut T;
         unsafe { ptr.write(value) };
-        return unsafe { ptr.as_mut().ok_or(ArenaError::OutOfMemory) };
+        Ok(unsafe { NonNull::new_unchecked(ptr) })
+    }
+
+    /// Allocates space for `T` without initialising it.
+    ///
+    /// # Safety
+    /// The caller must initialise the allocation before reading it.
+    /// The pointer is valid only until the next call to [`Arena::reset`].
+    pub fn alloc_uninit<T>(&mut self) -> Result<NonNull<T>, ArenaError> {
+        let layout = Layout::new::<T>();
+        let ptr = self.alloc_layout(layout)?.as_ptr() as *mut T;
+        Ok(unsafe { NonNull::new_unchecked(ptr) })
     }
 }
 
@@ -101,6 +140,24 @@ mod tests {
     fn alloc_u64_writes_u64_value() {
         let mut arena = Arena::new(64);
         let ptr = arena.alloc::<u64>(42).expect("Should be enough room");
-        assert_eq!(*ptr, 42);
+        assert_eq!(unsafe { *ptr.as_ptr() }, 42);
+    }
+
+    #[test]
+    fn align_up_returns_none_on_overflow() {
+        assert_eq!(align_up(usize::MAX, 8), None);
+        assert_eq!(align_up(usize::MAX - 6, 8), None);
+        assert_eq!(align_up(0, 8), Some(0));
+        assert_eq!(align_up(1, 8), Some(8));
+    }
+
+    #[test]
+    fn alloc_uninit_round_trip() {
+        let mut arena = Arena::new(64);
+        let ptr = arena.alloc_uninit::<u64>().expect("Should be enough room");
+        unsafe {
+            ptr.as_ptr().write(99u64);
+            assert_eq!(ptr.as_ptr().read(), 99u64);
+        }
     }
 }
