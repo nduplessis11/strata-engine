@@ -1,0 +1,64 @@
+[
+  {
+    "label": "Debug unit tests in library 'strata'",
+    "adapter": "CodeLLDB",
+    "build": {
+      "command": "cargo",
+      "args": ["test", "--package=strata"],
+    },
+    "cwd": "C:\\dev\\rust\\strata-engine",
+    "sourceLanguages": ["rust"],
+  },
+  {
+    "label": "Debug unit tests in library 'substrate'",
+    "adapter": "CodeLLDB",
+    "build": {
+      "command": "cargo",
+      "args": ["test", "--package=substrate"],
+    },
+    "cwd": "C:\\dev\\rust\\strata-engine",
+    "sourceLanguages": ["rust"],
+  },
+  {
+    "label": "Debug executable 'editor'",
+    "adapter": "CodeLLDB",
+    "build": {
+      "command": "cargo",
+      "args": ["build", "--bin=editor", "--package=editor"],
+    },
+    "cwd": "C:\\dev\\rust\\strata-engine",
+    "args": [],
+    "sourceLanguages": ["rust"],
+  },
+  {
+    "label": "Debug unit tests in executable 'editor'",
+    "adapter": "CodeLLDB",
+    "build": {
+      "command": "cargo",
+      "args": ["test", "--bin=editor", "--package=editor"],
+    },
+    "cwd": "C:\\dev\\rust\\strata-engine",
+    "sourceLanguages": ["rust"],
+  },
+  {
+    "label": "Debug executable 'example-game'",
+    "adapter": "CodeLLDB",
+    "build": {
+      "command": "cargo",
+      "args": ["build", "--bin=example-game", "--package=example-game"],
+    },
+    "cwd": "C:\\dev\\rust\\strata-engine",
+    "args": [],
+    "sourceLanguages": ["rust"],
+  },
+  {
+    "label": "Debug unit tests in executable 'example-game'",
+    "adapter": "CodeLLDB",
+    "build": {
+      "command": "cargo",
+      "args": ["test", "--bin=example-game", "--package=example-game"],
+    },
+    "cwd": "C:\\dev\\rust\\strata-engine",
+    "sourceLanguages": ["rust"],
+  },
+]
