@@ -5,6 +5,7 @@ members = [
     "crates/substrate",
     "crates/editor",
     "crates/example-game",
+    "xtask"
 ]
 
 [workspace.dependencies]
