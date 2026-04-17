@@ -1,4 +1,5 @@
 pub mod arena;
+pub mod cyclic_arena;
 pub mod frame_arena;
 
 pub struct DrawCommand {
